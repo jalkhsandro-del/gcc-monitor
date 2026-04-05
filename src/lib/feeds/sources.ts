@@ -1,1 +1,1 @@
-export { newsSources } from "@/config/sources";
+export { newsSources, getActiveFeeds } from "@/config/sources";

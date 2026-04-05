@@ -1,9 +1,12 @@
+import type { CountryCode } from "@/types";
+
 export interface NewsSource {
   id: string;
   name: string;
   rssUrl: string;
   tier: 1 | 2 | 3;
   coverage: string;
+  defaultCountry?: CountryCode;
 }
 
 export const newsSources: NewsSource[] = [
@@ -14,6 +17,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://www.agbi.com/feed/",
     tier: 1,
     coverage: "GCC business analysis, SWF, energy, finance",
+    defaultCountry: "gcc_wide",
   },
   {
     id: "arabian_business",
@@ -21,6 +25,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://www.arabianbusiness.com/rss",
     tier: 1,
     coverage: "Broad GCC business, rankings, leadership",
+    defaultCountry: "uae",
   },
   {
     id: "zawya",
@@ -28,6 +33,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://www.zawya.com/sitemaps/en/rss",
     tier: 1,
     coverage: "Financial news, M&A, market data",
+    defaultCountry: "gcc_wide",
   },
   {
     id: "gulf_business",
@@ -35,6 +41,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://gulfbusiness.com/feed/",
     tier: 1,
     coverage: "UAE-focused business, real estate, banking",
+    defaultCountry: "uae",
   },
   {
     id: "arab_news",
@@ -42,6 +49,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://www.arabnews.com/rss.xml",
     tier: 1,
     coverage: "Saudi-focused news, policy, economy",
+    defaultCountry: "ksa",
   },
   {
     id: "the_national",
@@ -49,6 +57,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://www.thenationalnews.com/rss/business.xml",
     tier: 1,
     coverage: "UAE quality reporting, analysis",
+    defaultCountry: "uae",
   },
   // Tier 2
   {
@@ -57,6 +66,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://www.argaam.com/en/rss/articles",
     tier: 2,
     coverage: "Saudi financial markets, stock analysis",
+    defaultCountry: "ksa",
   },
   {
     id: "trade_arabia",
@@ -64,6 +74,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://www.tradearabia.com/rss/all.xml",
     tier: 2,
     coverage: "GCC trade, construction, tourism",
+    defaultCountry: "bahrain",
   },
   {
     id: "gulf_news",
@@ -71,6 +82,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://gulfnews.com/rss/business",
     tier: 2,
     coverage: "UAE daily business, banking, real estate",
+    defaultCountry: "uae",
   },
   {
     id: "wamda",
@@ -78,6 +90,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://www.wamda.com/rss",
     tier: 2,
     coverage: "MENA tech, startups, venture capital",
+    defaultCountry: "gcc_wide",
   },
   {
     id: "al_monitor",
@@ -85,6 +98,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://www.al-monitor.com/rss",
     tier: 2,
     coverage: "GCC geopolitics, policy, diplomacy",
+    defaultCountry: "gcc_wide",
   },
   // Tier 3
   {
@@ -93,6 +107,7 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://www.constructionweekonline.com/rss",
     tier: 3,
     coverage: "GCC construction and infrastructure",
+    defaultCountry: "gcc_wide",
   },
   {
     id: "middle_east_eye",
@@ -100,5 +115,12 @@ export const newsSources: NewsSource[] = [
     rssUrl: "https://www.middleeasteye.net/rss",
     tier: 3,
     coverage: "Geopolitical analysis",
+    defaultCountry: "gcc_wide",
   },
 ];
+
+export function getActiveFeeds(): NewsSource[] {
+  return newsSources.filter((s) =>
+    ["agbi", "arabian_business", "gulf_business"].includes(s.id)
+  );
+}

@@ -3,7 +3,13 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npm run:*)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npm uninstall:*)",
+      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:$PATH\")",
+      "Bash(node -e \"const yf = require\\(''yahoo-finance2''\\); console.log\\(typeof yf.default, Object.keys\\(yf\\).slice\\(0,10\\)\\)\")",
+      "Bash(node --input-type=module -e \"import yahooFinance from ''yahoo-finance2''; const yf = new yahooFinance\\(\\); console.log\\(Object.getOwnPropertyNames\\(Object.getPrototypeOf\\(yf\\)\\).filter\\(n => !n.startsWith\\(''_''\\)\\)\\)\")",
+      "Bash(node --input-type=module -e \":*)",
+      "Bash(/usr/local/bin/npm run:*)"
     ]
   }
 }

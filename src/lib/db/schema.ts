@@ -11,6 +11,7 @@ import {
   serial,
   index,
   uniqueIndex,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 export const articles = pgTable(
@@ -97,6 +98,15 @@ export const macroStats = pgTable(
     ),
   ]
 );
+
+export const cache = pgTable("cache", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 export const megaprojects = pgTable("megaprojects", {
   id: serial("id").primaryKey(),

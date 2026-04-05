@@ -11,13 +11,9 @@
 │  └────┬─────┘  └────┬─────┘  └───────┬───────┘  │
 │       │              │                │          │
 │  ┌────┴──────────────┴────────────────┴───────┐  │
-│  │              Vercel KV (Redis)             │  │
-│  │         (market data cache, sessions)      │  │
-│  └────────────────────┬───────────────────────┘  │
-│                       │                          │
-│  ┌────────────────────┴───────────────────────┐  │
 │  │           Vercel Postgres (Neon)           │  │
-│  │    (articles, briefs, deals, macro data)   │  │
+│  │  articles, briefs, deals, macro data,     │  │
+│  │  cache table (replaces Redis/KV)          │  │
 │  └────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────┘
          │                    │
@@ -49,10 +45,10 @@
 ### Market data pipeline (runs every 15 minutes Sun-Thu)
 
 1. **Fetch**: Vercel Cron triggers `/api/cron/markets`
-2. **Check cache**: Read from Vercel KV — if fresh (within TTL), skip
+2. **Check cache**: Read from Postgres `cache` table — if not expired, skip
 3. **Batch quote**: Call Yahoo Finance for all symbols in one batch
-4. **Store**: Write to Vercel KV with appropriate TTL
-5. **Archive**: Write daily close to Postgres at 15:30 GST (for historical charts)
+4. **Store**: Upsert into Postgres `cache` table with appropriate `expires_at`
+5. **Archive**: Write daily close to Postgres `market_daily` at 15:30 GST (for historical charts)
 
 ### Morning brief generation (runs daily at 6:00 AM GST)
 
@@ -122,6 +118,14 @@ updated_at      timestamp
 UNIQUE(country, metric, period)
 ```
 
+**cache**
+```
+key             text        PK
+value           jsonb       NOT NULL
+expires_at      timestamp   NOT NULL
+created_at      timestamp   default now()
+```
+
 **megaprojects**
 ```
 id              serial      PK
@@ -138,15 +142,17 @@ updated_at      timestamp
 
 ## Caching strategy
 
-| Data type | Store | TTL | Fallback |
-|-----------|-------|-----|----------|
-| Market quotes (trading hours) | Vercel KV | 15 min | Last cached value + "delayed" badge |
-| Market quotes (off hours) | Vercel KV | 6 hours | Postgres daily close |
-| FX rates | Vercel KV | 1 hour | Last cached value |
-| Commodity prices | Vercel KV | 30 min | Last cached value |
+All caching uses the Postgres `cache` table with `key`, `value` (JSONB), and `expires_at` columns.
+
+| Data type | Cache key pattern | TTL | Fallback |
+|-----------|------------------|-----|----------|
+| Market quotes (trading hours) | `market:{symbol}` | 15 min | Last cached value + "delayed" badge |
+| Market quotes (off hours) | `market:{symbol}` | 6 hours | `market_daily` table |
+| FX rates | `fx:{pair}` | 1 hour | Last cached value |
+| Commodity prices | `commodity:{symbol}` | 30 min | Last cached value |
 | Article list (page) | ISR | 15 min | Stale page |
 | Morning brief | ISR | 60 min | Top articles fallback |
-| Macro stats | Postgres | N/A (manual update) | Previous period value |
+| Macro stats | Postgres `macro_stats` | N/A (manual update) | Previous period value |
 
 ## Error handling
 
@@ -160,11 +166,25 @@ async function fetchWithFallback<T>(
   ttlSeconds: number
 ): Promise<{ data: T | null; stale: boolean }> {
   try {
-    const cached = await kv.get<T>(key);
-    if (cached) return { data: cached, stale: false };
+    // Check Postgres cache table
+    const cached = await db
+      .select()
+      .from(cache)
+      .where(eq(cache.key, key))
+      .limit(1);
+    if (cached[0] && new Date(cached[0].expiresAt) > new Date()) {
+      return { data: cached[0].value as T, stale: false };
+    }
 
     const fresh = await fetcher();
-    await kv.set(key, fresh, { ex: ttlSeconds });
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+    await db
+      .insert(cache)
+      .values({ key, value: fresh as any, expiresAt })
+      .onConflictDoUpdate({
+        target: cache.key,
+        set: { value: fresh as any, expiresAt },
+      });
     return { data: fresh, stale: false };
   } catch (error) {
     console.error(`Failed to fetch ${key}:`, error);
@@ -179,10 +199,6 @@ async function fetchWithFallback<T>(
 ```env
 # Database
 POSTGRES_URL=                    # Vercel Postgres connection string
-
-# Cache
-KV_REST_API_URL=                 # Vercel KV endpoint
-KV_REST_API_TOKEN=               # Vercel KV token
 
 # AI
 ANTHROPIC_API_KEY=               # Claude API key
